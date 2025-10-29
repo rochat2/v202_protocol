@@ -75,17 +75,3 @@ When a frame is received (`BOUND_NEW_VALUES`), `rx_values_t` structure can be re
 
 Four axis, 3 trims values and flags are available. Last value depends on buttons pushed on the transmitter.
 	
-Improvements 
---------------------
-	
- There are many improvements to do :
- 
-  * Make more reliable code, first.
-  * Handle signal lost : return to initial state for example.
-  * Make a better state machine for this protocol with a re-factor of the code and a smaller footprint.
-  * Reduce execution time. State machine takes 120us when a frame arrived and 32ms when there are nothing to do.
-  * Implement this protocol in the multiwii project, if it useful.
-  * Make an arduino example with some RC servos.
-
- 
- 
