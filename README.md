@@ -1,76 +1,91 @@
-Receptor v202
+V202 Receiver
 ==========
 
-Descripción
+Goal
 --------------------
 
-Este código decodifica tramas de los transmisores v202/v222/v262/v282... con un Arduino y un chip nrf24L01.
+This code decodes frames from the v202/v222/v262/v282... transmitter with an arduino and a nrf24L01 chip.
+I want to thank Rivig for sharing the v202 protocol with his transmitter code (https://bitbucket.org/rivig/v202/src). I have included his decode functions.
+This code has not been tested enough and it is not reliable. So don't use it with dangerous rc model as planes, helicopters, cars...
 
 Hardware
 --------------------
 
-Para probarlo, utilizo un Arduino DIP sencillo en una placa de prototipos y un chip nrf24l01+. Sin embargo, un Arduino UNO u otro con el mismo chip también sirve. Conecta SCK, MISO y MOSI a los pines D13, D12 y D11, respectivamente. Luego, conecta CE y CS a los pines digitales que hayas definido en el código (consulta el método `wireless.setPins()` más abajo). Finalmente, conecta VCC y GND del nrf24l01 a los pines de 3.3V y GND del Arduino, recomiendo el uso del Arduino Mega par mas velocidad en la recepción de los datos.
+I use a simple DIP arduino on a prototype board and nrf24l01+ chip to test it. But an arduino UNO or other with the same chip makes the job. Connect SCK, MISO, MOSI on pins D13, D12 and D11. Then connect CE and CS on digital pins you have chosen in the code (see the `wireless.setPins()` method below). Finally connect nrf24l01 VCC and GND to arduino 3.3V and GND pins.
 
-Modo de uso
+Use
 --------------------
 
-Existen dos clases:
+There are two classes : 
 
-  * nrf24l01p: gestiona el protocolo SPI para comunicarse con el chip nrf24l01p.
+ * nrf24l01p : handle the spi protocol to communicate with the nrf24l01p chip
+ * v202_protocol : handle the v2xx protocol
+	
+v202_rx.ino is an example showing how use theses classes.
 
-  * v202_protocol: gestiona el protocolo v2xx.
-
-v202_rx.ino es un ejemplo que muestra cómo usar estas clases.
-
-Se instancian las siguientes clases:
-
-    nrf24l01p wireless;
+These two classes are instantiated :
+    
+	nrf24l01p wireless; 
     v202Protocol protocol;
 
-Los pines del nrf24l01 deben definirse en la función de configuración de Arduino. Los argumentos del método `setPins` definen los pines CE (habilitación del chip) y CS (selección de chip SPI) del nrf24L01 en este orden. En este ejemplo, no se utiliza el pin SS de Arduino como CS, sino el D7. Sin embargo, el pin SS debe configurarse como salida para activar el modo SPI maestro.
+The nrf24l01 pins must be defined in arduino setup function. `setPins` method arguments define the nrf24L01 CE (chip enable) and CS (SPI chip select) pins in this order. In my example, I did not use SS arduino pin as CS but D7 but SS pin must be set to output to activate the SPI mode to master.
 
     void setup() {
-        // SS pin must be set as output to set SPI to master !
-        pinMode(SS, OUTPUT);
-        Serial.begin(115200);
-        // Set CS pin to D7 and CE pin to D8
-        wireless.setPins(8,7);
-        protocol.init(&wireless);
-        ...
+      // SS pin must be set as output to set SPI to master !
+      pinMode(SS, OUTPUT);
+      Serial.begin(115200);
+      // Set CS pin to D7 and CE pin to D8
+      wireless.setPins(8,7);
+      protocol.init(&wireless);
+      ...
     }
-
-El encapsulador SPI (clase nrf24l01p) se vincula al protocolo en la función de configuración:
+	
+SPI wrapper (nrf24l01p class) are linked to the protocol in the setup function
 
     protocol.init(&wireless);
 
-En la función loop, el método v202Protocol Run() debe llamarse como máximo cada 4 ms con la estructura `rx_values_t`.
+In the loop function0, v202Protocol Run() method must be called at most every 4ms with & `rx_values_t` structure:
 
-    uint8_t value = protocol.run(&rxValues);
-
-Esta función tiene varios tipos de valores devueltos por una enumeración:
+    uint8_t value = protocol.run(&rxValues); 
+	
+This function has several kind of returns from an enum :
 
     enum rxReturn
-     {
-        BOUND_NEW_VALUES = 0,   // Estado conectado, trama recibida con nuevos valores TX
-        BOUND_NO_VALUES,        // Estado conectado, ninguna trama recivida
-        NOT_BOUND,              // No conectado, estado inicial
-        BIND_IN_PROGRESS,       // Enlace en progreso, Se ha recibido la primera trama con el ID TX, espera sin trama de datos.
-        ERROR_SIGNAL_LOST,      // Señal perdida
-        UNKNOWN                 // No usado por el momento
-     };
-
-Cuando se recibe una trama (`BOUND_NEW_VALUES`), se puede leer la estructura `rx_values_t`:
+    {
+       BOUND_NEW_VALUES = 0,   // Bound state, frame received with new TX values
+       BOUND_NO_VALUES,        // Bound state, no new frame received
+       NOT_BOUND,              // Not bound, initial state
+       BIND_IN_PROGRESS,       // Bind in progress, first frame has been received with TX id, wait no bind frame.
+       ERROR_SIGNAL_LOST,      // Signal lost
+       UNKNOWN                 // Not used for moment
+    };
+	
+When a frame is received (`BOUND_NEW_VALUES`), `rx_values_t` structure can be read :
 
     typedef struct __attribute__((__packed__)) {
-         uint8_t throttle;
-         int8_t yaw;
-         int8_t pitch;
-         int8_t roll;
-         int8_t trim_yaw;
-         int8_t trim_pitch;
-         int8_t trim_roll;
-         uint8_t flags;
-       } rx_values_t;
+      uint8_t throttle;
+      int8_t yaw;
+      int8_t pitch;
+      int8_t roll;
+      int8_t trim_yaw;
+      int8_t trim_pitch;
+      int8_t trim_roll;
+      uint8_t flags;
+    } rx_values_t;
 
-Dispone de cuatro ejes, tres valores de ajuste y banderas. El último valor depende de los botones pulsados ​​en el transmisor.
+Four axis, 3 trims values and flags are available. Last value depends on buttons pushed on the transmitter.
+	
+Improvements 
+--------------------
+	
+ There are many improvements to do :
+ 
+  * Make more reliable code, first.
+  * Handle signal lost : return to initial state for example.
+  * Make a better state machine for this protocol with a re-factor of the code and a smaller footprint.
+  * Reduce execution time. State machine takes 120us when a frame arrived and 32ms when there are nothing to do.
+  * Implement this protocol in the multiwii project, if it useful.
+  * Make an arduino example with some RC servos.
 
+ 
+ 
