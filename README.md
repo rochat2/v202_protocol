@@ -54,7 +54,7 @@ Esta función tiene varios tipos de valores devueltos por una enumeración:
         BOUND_NEW_VALUES = 0,   // Estado conectado, trama recibida con nuevos valores TX
         BOUND_NO_VALUES,        // Estado conectado, ninguna trama recivida
         NOT_BOUND,              // No conectado, estado inicial
-        BIND_IN_PROGRESS,       // Enlace en progreso, Se ha recibido el primera trama con el ID TX, no hay trama de enlace.
+        BIND_IN_PROGRESS,       // Enlace en progreso, Se ha recibido la primera trama con el ID TX, espera sin trama de datos.
         ERROR_SIGNAL_LOST,      // Señal perdida
         UNKNOWN                 // No usado por el momento
      };
